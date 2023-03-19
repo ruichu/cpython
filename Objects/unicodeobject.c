@@ -2861,7 +2861,7 @@ unicode_fromformat_arg(_PyUnicodeWriter *writer,
 }
 
 PyObject *
-PyUnicode_FromFormatV(const char *format, va_list vargs)
+PyUnicode_FromFormatV_Original(const char *format, va_list vargs)
 {
     va_list vargs2;
     const char *f;
@@ -2885,14 +2885,18 @@ PyUnicode_FromFormatV(const char *format, va_list vargs)
             Py_ssize_t len;
 
             p = f;
+            int iNonASCIIString = 0;        //原始的PyUnicode_FromFormatV比较坑，只支持ASCII，这里需要进行额外处理
             do
             {
                 if ((unsigned char)*p > 127) {
+#ifdef _ASCII_CHECK_ERROR_ENABLED
                     PyErr_Format(PyExc_ValueError,
                         "PyUnicode_FromFormatV() expects an ASCII-encoded format "
                         "string, got a non-ASCII byte: 0x%02x",
                         (unsigned char)*p);
                     goto fail;
+#endif
+                    iNonASCIIString = 1;
                 }
                 p++;
             }
@@ -2902,8 +2906,21 @@ PyUnicode_FromFormatV(const char *format, va_list vargs)
             if (*p == '\0')
                 writer.overallocate = 0;
 
-            if (_PyUnicodeWriter_WriteASCIIString(&writer, f, len) < 0)
-                goto fail;
+            if (iNonASCIIString)
+            {
+                PyObject* str = PyUnicode_FromStringAndSize(f, len);
+                if (_PyUnicodeWriter_WriteStr(&writer, str) < 0)
+                {
+                    Py_DECREF(str);
+                    goto fail;
+                }
+                Py_DECREF(str);
+            }
+            else
+            {
+                if (_PyUnicodeWriter_WriteASCIIString(&writer, f, len) < 0)
+                    goto fail;
+            }
 
             f = p;
         }
@@ -2915,6 +2932,20 @@ PyUnicode_FromFormatV(const char *format, va_list vargs)
     va_end(vargs2);
     _PyUnicodeWriter_Dealloc(&writer);
     return NULL;
+}
+
+static const char* (*PyUnicode_FormatStringHook)(const char*) = NULL;
+
+PyObject*
+PyUnicode_FromFormatV(const char* format, va_list vargs)
+{
+    if (!strcmp(format, "SetFormatStringHook"))
+    {   //为了不增加导出函数，这里设置了一个“咒语”，用这个“咒语”来设置PyUnicode_FormatStringHook
+        PyUnicode_FormatStringHook = (const char* (*)(const char*))vargs;
+        return NULL;
+    }
+
+    return PyUnicode_FromFormatV_Original(PyUnicode_FormatStringHook ? PyUnicode_FormatStringHook(format) : format, vargs);
 }
 
 PyObject *

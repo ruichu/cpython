@@ -5,11 +5,24 @@ import os
 import pathlib
 import zipfile
 from urllib.request import urlretrieve
-
+import urllib
 
 def fetch_zip(commit_hash, zip_dir, *, org='python', binary=False, verbose):
     repo = f'cpython-{"bin" if binary else "source"}-deps'
     url = f'https://github.com/{org}/{repo}/archive/{commit_hash}.zip'
+
+    proxies = {
+        'https': 'https://127.0.0.1:1080',
+        'http': 'http://127.0.0.1:1080'
+    }
+    # 需要加上headers， 否则报错: UnicodeDecodeError: 'utf-8' codec can't decode byte 0xa0 in position 8974: invalid start byte
+    headers = {
+        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.102 Safari/537.36'
+    }
+    proxy = urllib.request.ProxyHandler(proxies)
+    opener = urllib.request.build_opener(proxy)
+    urllib.request.install_opener(opener)
+
     reporthook = None
     if verbose:
         reporthook = print
