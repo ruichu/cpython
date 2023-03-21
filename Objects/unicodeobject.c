@@ -2934,18 +2934,18 @@ PyUnicode_FromFormatV_Original(const char *format, va_list vargs)
     return NULL;
 }
 
-static const char* (*PyUnicode_FormatStringHook)(const char*) = NULL;
+const char* (*PyUnicode_InternalMessageStringHook)(const char*) = NULL;
 
 PyObject*
 PyUnicode_FromFormatV(const char* format, va_list vargs)
 {
-    if (!strcmp(format, "SetFormatStringHook"))
-    {   //为了不增加导出函数，这里设置了一个“咒语”，用这个“咒语”来设置PyUnicode_FormatStringHook
-        PyUnicode_FormatStringHook = (const char* (*)(const char*))vargs;
+    if (!strcmp(format, "SetInternalMessageStringHook"))
+    {   //为了不增加导出函数，这里设置了一个“咒语”，用这个“咒语”来设置PyUnicode_InternalMessageStringHook
+        PyUnicode_InternalMessageStringHook = (const char* (*)(const char*))vargs;
         return NULL;
     }
 
-    return PyUnicode_FromFormatV_Original(PyUnicode_FormatStringHook ? PyUnicode_FormatStringHook(format) : format, vargs);
+    return PyUnicode_FromFormatV_Original(PyUnicode_InternalMessageStringHook ? PyUnicode_InternalMessageStringHook(format) : format, vargs);
 }
 
 PyObject *

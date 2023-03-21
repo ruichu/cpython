@@ -163,10 +163,12 @@ PyErr_SetNone(PyObject *exception)
     PyErr_SetObject(exception, (PyObject *)NULL);
 }
 
+extern const char* (*PyUnicode_InternalMessageStringHook)(const char*);
+
 void
 PyErr_SetString(PyObject *exception, const char *string)
 {
-    PyObject *value = PyUnicode_FromString(string);
+    PyObject *value = PyUnicode_FromString(PyUnicode_InternalMessageStringHook ? PyUnicode_InternalMessageStringHook(string) : string);
     PyErr_SetObject(exception, value);
     Py_XDECREF(value);
 }
